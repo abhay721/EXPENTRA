@@ -6,12 +6,16 @@ import User from '../models/userModel.js';
 // @access  Private
 export const createGroup = async (req, res, next) => {
     try {
-        const { name, members } = req.body;
+        const { name, description, members } = req.body;
 
         if (!name) {
             res.status(400);
             throw new Error('Please provide a group name');
         }
+
+        // Generate Invite Code (6 chars alphanumeric)
+        const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const inviteLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/join-group/${inviteCode}`;
 
         // Include the creator in the members list by default
         const initialMembers = [
@@ -23,8 +27,6 @@ export const createGroup = async (req, res, next) => {
         ];
 
         if (members && members.length > 0) {
-            // Here we could validate each member or lookup by email if provided
-            // For simplicity, we just add them
             members.forEach(m => {
                 initialMembers.push({
                     user: m.user || null,
@@ -36,6 +38,9 @@ export const createGroup = async (req, res, next) => {
 
         const group = await Group.create({
             name,
+            description: description || '',
+            inviteCode,
+            inviteLink,
             createdBy: req.user._id,
             members: initialMembers,
         });
@@ -229,6 +234,102 @@ export const removeMemberFromGroup = async (req, res, next) => {
         await group.save();
 
         res.status(200).json(group);
+    } catch (error) {
+        next(error);
+    }
+};
+// @desc    Join group by invite code
+// @route   POST /api/groups/join
+// @access  Private
+export const joinGroupByCode = async (req, res, next) => {
+    try {
+        const { inviteCode } = req.body;
+
+        if (!inviteCode) {
+            res.status(400);
+            throw new Error('Please provide an invite code');
+        }
+
+        const group = await Group.findOne({ inviteCode });
+
+        if (!group) {
+            res.status(404);
+            throw new Error('Group not found with this code');
+        }
+
+        // Check if user is already a member
+        const isMember = group.members.some(m => m.user && m.user.toString() === req.user._id.toString());
+        if (isMember) {
+            res.status(400);
+            throw new Error('You are already a member of this group');
+        }
+
+        // Add user to members
+        group.members.push({
+            user: req.user._id,
+            name: req.user.name,
+            email: req.user.email,
+            joinedAt: Date.now()
+        });
+
+        await group.save();
+
+        res.status(200).json({ message: 'Joined group successfully', group });
+    } catch (error) {
+        next(error);
+    }
+};
+// @desc    Update a group
+// @route   PUT /api/groups/:id
+// @access  Private
+export const updateGroup = async (req, res, next) => {
+    try {
+        const { name, description } = req.body;
+        const group = await Group.findById(req.params.id);
+
+        if (!group) {
+            res.status(404);
+            throw new Error('Group not found');
+        }
+
+        // Only creator can update group
+        if (group.createdBy.toString() !== req.user._id.toString()) {
+            res.status(401);
+            throw new Error('Not authorized to update this group');
+        }
+
+        group.name = name || group.name;
+        group.description = description || group.description;
+
+        const updatedGroup = await group.save();
+        res.json(updatedGroup);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Delete a group
+// @route   DELETE /api/groups/:id
+// @access  Private
+export const deleteGroup = async (req, res, next) => {
+    try {
+        const group = await Group.findById(req.params.id);
+
+        if (!group) {
+            res.status(404);
+            throw new Error('Group not found');
+        }
+
+        // Only creator can delete group
+        if (group.createdBy.toString() !== req.user._id.toString()) {
+            res.status(401);
+            throw new Error('Not authorized to delete this group');
+        }
+
+        // Also delete related group expenses? 
+        // For now just delete the group
+        await Group.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Group deleted successfully' });
     } catch (error) {
         next(error);
     }

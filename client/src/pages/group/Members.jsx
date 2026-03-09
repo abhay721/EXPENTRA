@@ -112,11 +112,68 @@ const Members = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-                {/* Add Member Form */}
+                {/* Invite Members Section */}
+                <div className="md:col-span-1 border border-emerald-100 bg-white rounded-xl shadow-sm p-6 self-start text-sm">
+                    <h2 className="text-base font-semibold mb-4 flex items-center text-emerald-900 border-b pb-2">
+                        <MdGroupAdd className="mr-2 w-5 h-5 text-emerald-500" />
+                        Invite Options
+                    </h2>
+
+                    <div className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Invite Code</label>
+                            <div className="flex items-center gap-2">
+                                <div className="flex-1 bg-gray-50 px-4 py-3 rounded-xl font-black text-lg text-center tracking-widest border border-gray-100">
+                                    {groupData?.inviteCode || 'N/A'}
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(groupData?.inviteCode);
+                                        toast.success("Code copied!");
+                                    }}
+                                    className="p-3 bg-gray-100 rounded-xl hover:bg-gray-200 transition"
+                                    title="Copy Code"
+                                >
+                                    <MdCheck className="w-5 h-5 text-gray-600" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Invite Link</label>
+                            <div className="flex items-center gap-2">
+                                <div className="flex-1 bg-gray-50 px-3 py-2 rounded-lg text-xs truncate border border-gray-100 text-gray-500">
+                                    {groupData?.inviteLink || 'N/A'}
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(groupData?.inviteLink);
+                                        toast.success("Link copied!");
+                                    }}
+                                    className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                                    title="Copy Link"
+                                >
+                                    <MdCheck className="w-4 h-4 text-gray-600" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="pt-2">
+                            <button
+                                onClick={() => toast.info("Email invitation feature coming soon!")}
+                                className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition"
+                            >
+                                Invite via Email
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Add Member Form (Manual) */}
                 <div className="md:col-span-1 border border-indigo-100 bg-white rounded-xl shadow-sm p-6 self-start text-sm">
                     <h2 className="text-base font-semibold mb-4 flex items-center text-indigo-900 border-b pb-2">
-                        <MdGroupAdd className="mr-2 w-5 h-5 text-indigo-500" />
-                        Add New Member
+                        <MdPerson className="mr-2 w-5 h-5 text-indigo-500" />
+                        Add Manually
                     </h2>
 
                     <form onSubmit={handleAddMember} className="space-y-4">
@@ -141,13 +198,12 @@ const Members = () => {
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
                                 placeholder="john@example.com"
                             />
-                            <p className="text-xs text-gray-500 mt-1">Providing an email allows linking to a registered account if it exists.</p>
                         </div>
 
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className={`w-full py-2 px-4 rounded-lg font-medium text-white transition-colors
+                            className={`w-full py-3 px-4 rounded-xl font-bold text-white transition-colors
                                 ${isSubmitting ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}
                         >
                             {isSubmitting ? 'Adding...' : 'Add Member'}

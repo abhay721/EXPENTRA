@@ -12,6 +12,17 @@ const groupSchema = new mongoose.Schema(
             ref: 'User',
             required: true,
         },
+        description: {
+            type: String,
+            trim: true,
+        },
+        inviteCode: {
+            type: String,
+            unique: true,
+        },
+        inviteLink: {
+            type: String,
+        },
         members: [
             {
                 user: {

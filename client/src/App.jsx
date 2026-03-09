@@ -77,6 +77,7 @@ function App() {
               <Route path="/groups/members" element={<Members />} />
               <Route path="/groups/analytics" element={<GroupAnalytics />} />
               <Route path="/groups/reports" element={<GroupReports />} />
+              <Route path="/join-group/:inviteCode" element={<GroupSelection />} />
 
               <Route element={<ProtectedRoute allowedRoles={['company', 'admin']} />}>
                 <Route path="/company/dashboard" element={<CompanyDashboard />} />

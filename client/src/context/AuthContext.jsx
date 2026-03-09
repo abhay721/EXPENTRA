@@ -11,6 +11,7 @@ export const AuthProvider = ({ children }) => {
     // Group Mode State
     const [appMode, setAppModeState] = useState(localStorage.getItem('appMode') || 'personal'); // 'personal' | 'group'
     const [selectedGroupId, setSelectedGroupIdState] = useState(localStorage.getItem('selectedGroupId') || null);
+    const [activeGroup, setActiveGroup] = useState(null);
 
     const setAppMode = (mode) => {
         setAppModeState(mode);
@@ -21,10 +22,28 @@ export const AuthProvider = ({ children }) => {
         setSelectedGroupIdState(groupId);
         if (groupId) {
             localStorage.setItem('selectedGroupId', groupId);
+            fetchGroupName(groupId);
         } else {
             localStorage.removeItem('selectedGroupId');
+            setActiveGroup(null);
         }
     };
+
+    const fetchGroupName = async (groupId) => {
+        try {
+            const res = await api.get(`/groups/${groupId}`);
+            setActiveGroup(res.data);
+        } catch (error) {
+            console.error("Failed to fetch group name", error);
+            setActiveGroup(null);
+        }
+    };
+
+    useEffect(() => {
+        if (selectedGroupId && !activeGroup) {
+            fetchGroupName(selectedGroupId);
+        }
+    }, [selectedGroupId]);
 
     useEffect(() => {
         const checkLoggedIn = async () => {
@@ -82,7 +101,7 @@ export const AuthProvider = ({ children }) => {
     return (
         <AuthContext.Provider value={{
             user, setUser, login, register, logout, loading,
-            appMode, setAppMode, selectedGroupId, setSelectedGroupId
+            appMode, setAppMode, selectedGroupId, setSelectedGroupId, activeGroup
         }}>
             {!loading && children}
         </AuthContext.Provider>

@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import api from '../services/api';
 
 const Navbar = ({ user, setIsSidebarOpen }) => {
-    const { logout } = useContext(AuthContext);
+    const { logout, appMode, activeGroup } = useContext(AuthContext);
     const [notifications, setNotifications] = useState([]);
 
     useEffect(() => {
@@ -33,9 +33,17 @@ const Navbar = ({ user, setIsSidebarOpen }) => {
                 >
                     <MdMenu className="w-6 h-6" />
                 </button>
-                <h2 className="text-xl md:text-2xl font-semibold text-gray-800 capitalize truncate">
-                    {user?.role} Portal
+                <h2 className="text-xl md:text-2xl font-bold text-gray-900 border-l-4 border-indigo-600 pl-4 capitalize truncate">
+                    {appMode === 'group' && activeGroup ? activeGroup.name : `${user?.role} Portal`}
                 </h2>
+                {appMode === 'group' && (
+                    <Link
+                        to="/groups"
+                        className="ml-4 px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-full hover:bg-indigo-100 transition-colors border border-indigo-100 flex items-center whitespace-nowrap"
+                    >
+                        Change Group
+                    </Link>
+                )}
             </div>
 
             <div className="flex items-center space-x-6">

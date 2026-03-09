@@ -28,22 +28,22 @@ const Sidebar = ({ role, isOpen, setIsOpen }) => {
         if (role === 'personal') {
             if (appMode === 'group') {
                 return [
-                    { name: 'Dashboard', path: '/groups/dashboard', icon: <MdDashboard className="w-6 h-6" /> },
-                    { name: 'Expenses', path: '/groups/expenses', icon: <FaMoneyBillWave className="w-6 h-6 text-red-400" /> },
-                    { name: 'Analytics', path: '/groups/analytics', icon: <MdAnalytics className="w-6 h-6" /> },
-                    { name: 'Reports', path: '/groups/reports', icon: <MdPieChart className="w-6 h-6" /> },
-                    { name: 'Members', path: '/groups/members', icon: <MdGroup className="w-6 h-6" /> },
+                    { name: 'Group Dashboard', path: '/groups/dashboard', icon: <MdDashboard className="w-6 h-6" /> },
+                    { name: 'Add Expense', path: '/groups/add-expense', icon: <FaMoneyBillWave className="w-6 h-6 text-red-400" /> },
                     { name: 'Settlement', path: '/groups/settlement', icon: <MdHandshake className="w-6 h-6" /> },
-                    { name: 'Back to Personal', path: '/dashboard', icon: <MdHome className="w-6 h-6 text-indigo-200" />, action: () => setAppMode('personal') },
+                    { name: 'Members', path: '/groups/members', icon: <MdGroup className="w-6 h-6" /> },
+                    { name: 'Analysis', path: '/groups/analytics', icon: <MdAnalytics className="w-6 h-6" /> },
+                    { name: 'Reports', path: '/groups/reports', icon: <MdPieChart className="w-6 h-6" /> },
+                    { name: 'Back to Personal', path: '/dashboard', icon: <MdHome className="w-6 h-6 text-indigo-400" />, action: () => setAppMode('personal') },
                 ];
             } else {
                 return [
                     { name: 'Dashboard', path: '/dashboard', icon: <MdDashboard className="w-6 h-6" /> },
                     { name: 'Income', path: '/income', icon: <FaMoneyBillWave className="w-6 h-6 text-green-400" /> },
                     { name: 'Expenses', path: '/expenses', icon: <FaMoneyBillWave className="w-6 h-6 text-red-400" /> },
-                    { name: 'Budget', path: '/budget', icon: <MdAttachMoney className="w-6 h-6" /> },
                     { name: 'Reports', path: '/reports', icon: <MdPieChart className="w-6 h-6" /> },
-                    { name: 'Analysis', path: '/analysis', icon: <MdAnalytics className="w-6 h-6" /> }
+                    { name: 'Budget', path: '/budget', icon: <MdAttachMoney className="w-6 h-6" /> },
+                    { name: 'Switch to Group', path: '/groups', icon: <MdGroup className="w-6 h-6 text-indigo-400" />, action: () => setAppMode('group') },
                 ];
             }
         }
