@@ -2,12 +2,13 @@ import React, { useState, useEffect, useContext } from 'react';
 import api from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
-import { MdGroup, MdAttachMoney, MdAccountBalanceWallet } from 'react-icons/md';
+import { MdGroup, MdAccountBalanceWallet, MdTrendingUp, MdPriorityHigh, MdShowChart } from 'react-icons/md';
 
 const GroupDashboard = () => {
-    const { selectedGroupId } = useContext(AuthContext);
+    const { selectedGroupId, user } = useContext(AuthContext);
     const [groupData, setGroupData] = useState(null);
     const [settlements, setSettlements] = useState(null);
+    const [expenses, setExpenses] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -15,12 +16,14 @@ const GroupDashboard = () => {
 
         const fetchGroupDashboard = async () => {
             try {
-                const [groupRes, settleRes] = await Promise.all([
+                const [groupRes, settleRes, expRes] = await Promise.all([
                     api.get(`/groups/${selectedGroupId}`),
-                    api.get(`/group-expenses/${selectedGroupId}/settlements`)
+                    api.get(`/group-expenses/${selectedGroupId}/settlements`),
+                    api.get(`/group-expenses/${selectedGroupId}`)
                 ]);
                 setGroupData(groupRes.data);
                 setSettlements(settleRes.data);
+                setExpenses(expRes.data);
             } catch (error) {
                 toast.error("Failed to load group dashboard");
             } finally {
@@ -37,70 +40,169 @@ const GroupDashboard = () => {
 
     if (loading) return <div className="p-8">Loading dashboard...</div>;
 
-    const totalExpense = settlements?.balances.reduce((acc, bal) => {
-        // Balances obj: balance > 0 means paid more, balance < 0 means paid less. Total expense is simply total of all credits or total of all debits if we just want the sum, wait we don't have total expenses here directly, let's just sum up the positive balances? No, we need total group expense. We can just use the balances array. Actually, sum of all positive balances = sum of all negative absolute balances = total amount circulated. Not exactly total expense. Let's just calculate total expense from expenses. Wait, we didn't fetch expenses array. Let's just show Total Group Members instead.
-        return acc;
-    }, 0);
+    const totalGroupExpense = expenses.reduce((acc, exp) => acc + exp.amount, 0);
+
+    // Find who paid most
+    const paymentMap = {};
+    expenses.forEach(exp => {
+        exp.paidBy.forEach(p => {
+            const id = p.user ? p.user.toString() : p.name;
+            paymentMap[id] = (paymentMap[id] || 0) + p.amount;
+        });
+    });
+
+    let topPayer = { name: 'N/A', amount: 0 };
+    Object.keys(paymentMap).forEach(id => {
+        if (paymentMap[id] > topPayer.amount) {
+            topPayer = {
+                name: groupData.members.find(m => (m.user && m.user.toString() === id) || m.name === id)?.name || 'Member',
+                amount: paymentMap[id]
+            };
+        }
+    });
+
+    // Find who owes most (most negative balance)
+    let topDebtor = { name: 'All Settled', amount: 0 };
+    settlements?.balances.forEach(b => {
+        if (b.balance < topDebtor.amount) {
+            topDebtor = { name: b.memberInfo.name, amount: b.balance };
+        }
+    });
 
     return (
-        <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-gray-900">{groupData?.name} - Dashboard</h1>
+        <div className="max-w-5xl mx-auto space-y-6 pb-12">
+            <h1 className="text-3xl font-extrabold text-gray-900">{groupData?.name}</h1>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="bg-white rounded-xl shadow p-6 border-l-4 border-indigo-500">
-                    <div className="flex items-center text-gray-500 mb-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white rounded-2xl shadow-sm p-6 border-l-4 border-indigo-500">
+                    <div className="flex items-center text-gray-400 mb-2">
                         <MdGroup className="w-5 h-5 mr-2" />
-                        <span className="text-sm font-medium uppercase">Total Members</span>
+                        <span className="text-xs font-bold uppercase tracking-widest">Members</span>
                     </div>
-                    <p className="text-3xl font-bold text-gray-900">{groupData?.members?.length || 0}</p>
+                    <p className="text-3xl font-black text-gray-900">{groupData?.members?.length || 0}</p>
                 </div>
 
-                <div className="bg-white rounded-xl shadow p-6 border-l-4 border-teal-500">
-                    <div className="flex items-center text-gray-500 mb-2">
+                <div className="bg-white rounded-2xl shadow-sm p-6 border-l-4 border-teal-500">
+                    <div className="flex items-center text-gray-400 mb-2">
                         <MdAccountBalanceWallet className="w-5 h-5 mr-2" />
-                        <span className="text-sm font-medium uppercase">Your Balance</span>
+                        <span className="text-xs font-bold uppercase tracking-widest">Your Balance</span>
                     </div>
-                    {/* We need to find current user's balance */}
                     {(() => {
-                        const myBal = settlements?.balances.find(b => b.memberInfo.user && b.memberInfo.user.toString() === groupData.createdBy.toString())?.balance || 0; // rough check, ideally use user._id
+                        const myBal = settlements?.balances.find(b => b.memberInfo.user && user && b.memberInfo.user.toString() === user._id.toString())?.balance || 0;
                         return (
-                            <p className={`text-3xl font-bold ${myBal > 0 ? 'text-green-600' : myBal < 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                            <p className={`text-3xl font-black ${myBal > 0 ? 'text-green-600' : myBal < 0 ? 'text-red-600' : 'text-gray-900'}`}>
                                 {myBal > 0 ? '+' : ''}₹{myBal.toLocaleString()}
                             </p>
                         );
                     })()}
-                    <p className="text-xs text-gray-400 mt-1">Positive = You are owed, Negative = You owe</p>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm p-6 border-l-4 border-amber-500">
+                    <div className="flex items-center text-gray-400 mb-2">
+                        <MdShowChart className="w-5 h-5 mr-2" />
+                        <span className="text-xs font-bold uppercase tracking-widest">Total Group</span>
+                    </div>
+                    <p className="text-3xl font-black text-gray-900">₹{totalGroupExpense.toLocaleString()}</p>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm p-6 border-l-4 border-rose-500">
+                    <div className="flex items-center text-gray-400 mb-2">
+                        <MdTrendingUp className="w-5 h-5 mr-2" />
+                        <span className="text-xs font-bold uppercase tracking-widest">Top Payer</span>
+                    </div>
+                    <p className="text-2xl font-black text-gray-900 truncate" title={topPayer.name}>{topPayer.name}</p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-                <div className="bg-white p-6 rounded-xl shadow">
-                    <h3 className="text-lg font-semibold mb-4 border-b pb-2">Group Members</h3>
-                    <ul className="space-y-3">
-                        {groupData?.members.map(m => (
-                            <li key={m._id || m.name} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                <span className="font-medium text-gray-800">{m.name} {m.email ? `(${m.email})` : ''}</span>
-                                <span className="text-sm text-gray-500">Joined {new Date(m.joinedAt).toLocaleDateString()}</span>
-                            </li>
-                        ))}
-                    </ul>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h3 className="text-lg font-bold mb-6 text-gray-800 flex items-center">
+                            <MdPriorityHigh className="mr-2 text-rose-500" /> Member Contributions
+                        </h3>
+                        <div className="space-y-4">
+                            {groupData?.members.map(m => {
+                                const id = m._id;
+                                const participantId = m.user ? m.user.toString() : m.name;
+                                const paid = paymentMap[participantId] || 0;
+                                const percentage = totalGroupExpense > 0 ? (paid / totalGroupExpense) * 100 : 0;
+
+                                return (
+                                    <div key={id} className="space-y-1">
+                                        <div className="flex justify-between text-sm">
+                                            <span className="font-bold text-gray-700">{m.name}</span>
+                                            <span className="font-black text-gray-900">₹{paid.toLocaleString()} ({percentage.toFixed(1)}%)</span>
+                                        </div>
+                                        <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-indigo-600 transition-all duration-1000"
+                                                style={{ width: `${percentage}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h3 className="text-lg font-bold mb-4 text-gray-800">Quick Balances</h3>
+                        {settlements?.simplifiedDebts.length === 0 ? (
+                            <div className="text-center py-10">
+                                <span className="text-4xl">🎉</span>
+                                <p className="text-gray-500 mt-2 font-medium">Everyone is all settled up!</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {settlements?.simplifiedDebts.map((debt, i) => (
+                                    <div key={i} className="flex flex-col p-4 bg-gray-50 rounded-xl border border-gray-100 relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition">
+                                            <MdPriorityHigh className="w-12 h-12" />
+                                        </div>
+                                        <div className="flex items-center text-sm mb-2">
+                                            <span className="font-bold text-gray-900">{debt.from.name}</span>
+                                            <span className="mx-2 text-gray-400">pays</span>
+                                            <span className="font-bold text-gray-900">{debt.to.name}</span>
+                                        </div>
+                                        <span className="text-xl font-black text-rose-600">₹{debt.amount.toLocaleString()}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl shadow">
-                    <h3 className="text-lg font-semibold mb-4 border-b pb-2">Quick Balances</h3>
-                    {settlements?.simplifiedDebts.length === 0 ? (
-                        <p className="text-gray-500 text-center py-4">Everyone is settled up!</p>
-                    ) : (
-                        <ul className="space-y-3">
-                            {settlements?.simplifiedDebts.map((debt, i) => (
-                                <li key={i} className="flex items-center text-gray-700 bg-red-50 p-3 rounded-lg border border-red-100">
-                                    <span className="font-semibold mr-1">{debt.from.name}</span> owes
-                                    <span className="font-semibold mx-1">{debt.to.name}</span>
-                                    <span className="font-bold text-red-600 ml-auto">₹{debt.amount.toLocaleString()}</span>
-                                </li>
+                <div className="space-y-6">
+                    <div className="bg-rose-600 p-6 rounded-2xl shadow-xl text-white">
+                        <h3 className="text-lg font-bold mb-4">Urgent Settlement</h3>
+                        <div className="space-y-4">
+                            <div className="p-4 bg-white/10 rounded-xl border border-white/20">
+                                <p className="text-xs uppercase font-bold text-rose-200 tracking-widest mb-1">Most Owed To Group</p>
+                                <p className="text-2xl font-black">{topDebtor.name}</p>
+                                <p className="text-rose-200 font-bold mt-1">₹{Math.abs(topDebtor.amount).toLocaleString()}</p>
+                            </div>
+                            <p className="text-sm text-rose-100 italic">
+                                Hey {topDebtor.name}, time to clear your debts!
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Group Members</h3>
+                        <div className="space-y-3">
+                            {groupData?.members.map(m => (
+                                <div key={m._id || m.name} className="flex items-center justify-between">
+                                    <div className="flex items-center">
+                                        <div className="w-8 h-8 bg-indigo-100 text-indigo-700 rounded-lg flex items-center justify-center font-bold text-xs mr-3">
+                                            {m.name.charAt(0)}
+                                        </div>
+                                        <span className="text-sm font-bold text-gray-700 truncate max-w-[120px]">{m.name}</span>
+                                    </div>
+                                    <span className="text-[10px] text-gray-400 font-bold">{new Date(m.joinedAt).toLocaleDateString()}</span>
+                                </div>
                             ))}
-                        </ul>
-                    )}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

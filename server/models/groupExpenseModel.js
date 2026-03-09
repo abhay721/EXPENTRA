@@ -43,6 +43,34 @@ const groupExpenseSchema = new mongoose.Schema(
                 },
             }
         ],
+        splitType: {
+            type: String,
+            enum: ['equal', 'exact', 'percentage', 'custom'],
+            default: 'equal',
+        },
+        splitDetails: [
+            {
+                user: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'User',
+                },
+                name: String,
+                share: Number, // Percentage or absolute value depending on splitType
+            }
+        ],
+        settlements: [
+            {
+                from: {
+                    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+                    name: String,
+                },
+                to: {
+                    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+                    name: String,
+                },
+                amount: Number,
+            }
+        ],
         category: {
             type: String,
             required: true,
