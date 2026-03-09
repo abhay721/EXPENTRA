@@ -83,16 +83,22 @@ const GroupDashboard = () => {
                 </div>
 
                 <div className="bg-white rounded-2xl shadow-sm p-6 border-l-4 border-teal-500">
-                    <div className="flex items-center text-gray-400 mb-2">
-                        <MdAccountBalanceWallet className="w-5 h-5 mr-2" />
-                        <span className="text-xs font-bold uppercase tracking-widest">Your Balance</span>
-                    </div>
                     {(() => {
                         const myBal = settlements?.balances.find(b => b.memberInfo.user && user && b.memberInfo.user.toString() === user._id.toString())?.balance || 0;
+                        const isOwed = myBal > 0;
+                        const owes = myBal < 0;
+                        const label = isOwed ? "You Get Back" : owes ? "You Owe" : "Your Balance";
+                        const amountColor = isOwed ? 'text-green-600' : owes ? 'text-red-600' : 'text-gray-900';
                         return (
-                            <p className={`text-3xl font-black ${myBal > 0 ? 'text-green-600' : myBal < 0 ? 'text-red-600' : 'text-gray-900'}`}>
-                                {myBal > 0 ? '+' : ''}₹{myBal.toLocaleString()}
-                            </p>
+                            <>
+                                <div className="flex items-center text-gray-400 mb-2">
+                                    <MdAccountBalanceWallet className="w-5 h-5 mr-2" />
+                                    <span className="text-xs font-bold uppercase tracking-widest">{label}</span>
+                                </div>
+                                <p className={`text-3xl font-black ${amountColor}`}>
+                                    ₹{Math.abs(myBal).toLocaleString()}
+                                </p>
+                            </>
                         );
                     })()}
                 </div>

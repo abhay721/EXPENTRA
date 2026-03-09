@@ -1,5 +1,5 @@
 import express from 'express';
-import { addGroupExpense, getGroupExpenses, getGroupSettlements, markSettlementAsPaid } from '../controllers/groupExpenseController.js';
+import { addGroupExpense, getGroupExpenses, getGroupSettlements, markSettlementAsPaid, updateGroupExpense, deleteGroupExpense } from '../controllers/groupExpenseController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -13,7 +13,12 @@ router.route('/:groupId')
 router.route('/:groupId/settlements')
     .get(protect, getGroupSettlements);
 
+router.route('/:groupId/:expenseId')
+    .put(protect, updateGroupExpense)
+    .delete(protect, deleteGroupExpense);
+
 router.route('/:groupId/settlements/:expenseId/:settlementId/paid')
     .patch(protect, markSettlementAsPaid);
+
 
 export default router;

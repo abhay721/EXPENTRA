@@ -68,11 +68,12 @@ function App() {
               <Route path="/analysis" element={<Analysis />} />
               <Route path="/alerts" element={<Alerts />} />
 
-              {/* Group Routes (Personal Only usually, but let's keep them generally protected) */}
               <Route path="/groups" element={<GroupSelection />} />
               <Route path="/groups/dashboard" element={<GroupDashboard />} />
               <Route path="/groups/expenses" element={<GroupExpenses />} />
               <Route path="/groups/add-expense" element={<AddGroupExpense />} />
+              <Route path="/groups/expenses/edit/:expenseId" element={<AddGroupExpense />} />
+
               <Route path="/groups/settlement" element={<Settlement />} />
               <Route path="/groups/members" element={<Members />} />
               <Route path="/groups/analytics" element={<GroupAnalytics />} />

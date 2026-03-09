@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
-import { MdAdd, MdReceipt, MdKeyboardArrowDown, MdKeyboardArrowUp, MdCompareArrows } from 'react-icons/md';
+import { MdAdd, MdReceipt, MdKeyboardArrowDown, MdKeyboardArrowUp, MdCompareArrows, MdEdit, MdDelete } from 'react-icons/md';
 
 const GroupExpenses = () => {
     const navigate = useNavigate();
@@ -13,85 +13,97 @@ const GroupExpenses = () => {
     const [loading, setLoading] = useState(true);
     const [expandedActivity, setExpandedActivity] = useState(null);
 
-    useEffect(() => {
-        if (!selectedGroupId) return;
+    const fetchData = async () => {
+        try {
+            const [expRes, groupRes] = await Promise.all([
+                api.get(`/group-expenses/${selectedGroupId}`),
+                api.get(`/groups/${selectedGroupId}`)
+            ]);
 
-        const fetchData = async () => {
-            try {
-                const [expRes, groupRes] = await Promise.all([
-                    api.get(`/group-expenses/${selectedGroupId}`),
-                    api.get(`/groups/${selectedGroupId}`)
-                ]);
+            const rawExpenses = expRes.data;
+            const transformedActivities = [];
+            const settlementAggregator = {};
 
-                const rawExpenses = expRes.data;
-                const transformedActivities = [];
-                const settlementAggregator = {};
+            rawExpenses.forEach(exp => {
+                // Add the expense
+                transformedActivities.push({
+                    ...exp,
+                    activityType: 'expense'
+                });
 
-                rawExpenses.forEach(exp => {
-                    // Add the expense
-                    transformedActivities.push({
-                        ...exp,
-                        activityType: 'expense'
-                    });
+                // Collect paid settlements for bulk aggregation
+                if (exp.settlements && exp.settlements.length > 0) {
+                    exp.settlements.forEach(s => {
+                        if (s.reimbursementStatus === 'paid') {
+                            // Group by date (string), from, and to
+                            const dateKey = s.paymentDate ? new Date(s.paymentDate).getTime() : new Date(exp.date).getTime();
+                            const fromKey = s.from.user || s.from.name;
+                            const toKey = s.to.user || s.to.name;
+                            const key = `${dateKey}_${fromKey}_${toKey}`;
 
-                    // Collect paid settlements for bulk aggregation
-                    if (exp.settlements && exp.settlements.length > 0) {
-                        exp.settlements.forEach(s => {
-                            if (s.reimbursementStatus === 'paid') {
-                                // Group by date (string), from, and to
-                                const dateKey = s.paymentDate ? new Date(s.paymentDate).getTime() : new Date(exp.date).getTime();
-                                const fromKey = s.from.user || s.from.name;
-                                const toKey = s.to.user || s.to.name;
-                                const key = `${dateKey}_${fromKey}_${toKey}`;
-
-                                if (!settlementAggregator[key]) {
-                                    settlementAggregator[key] = {
-                                        _id: `settle_${key}`,
-                                        activityType: 'settlement',
-                                        title: `Settled: ${s.from.name} → ${s.to.name}`,
-                                        amount: s.amount,
-                                        date: new Date(dateKey),
-                                        note: `Settled for group of expenses`,
-                                        paymentMethod: s.paymentMethod,
-                                        expensesCount: 1,
-                                        underlyingExpenses: [{
-                                            title: exp.title,
-                                            amount: s.amount
-                                        }]
-                                    };
-                                } else {
-                                    settlementAggregator[key].amount += s.amount;
-                                    settlementAggregator[key].expensesCount += 1;
-                                    // Avoid duplicate expense titles if possible, or just add all
-                                    settlementAggregator[key].underlyingExpenses.push({
+                            if (!settlementAggregator[key]) {
+                                settlementAggregator[key] = {
+                                    _id: `settle_${key}`,
+                                    activityType: 'settlement',
+                                    title: `Settled: ${s.from.name} → ${s.to.name}`,
+                                    amount: s.amount,
+                                    date: new Date(dateKey),
+                                    note: `Settled for group of expenses`,
+                                    paymentMethod: s.paymentMethod,
+                                    expensesCount: 1,
+                                    underlyingExpenses: [{
                                         title: exp.title,
                                         amount: s.amount
-                                    });
-                                }
+                                    }]
+                                };
+                            } else {
+                                settlementAggregator[key].amount += s.amount;
+                                settlementAggregator[key].expensesCount += 1;
+                                // Avoid duplicate expense titles if possible, or just add all
+                                settlementAggregator[key].underlyingExpenses.push({
+                                    title: exp.title,
+                                    amount: s.amount
+                                });
                             }
-                        });
-                    }
-                });
+                        }
+                    });
+                }
+            });
 
-                // Add aggregated settlements to activities
-                Object.values(settlementAggregator).forEach(aggS => {
-                    transformedActivities.push(aggS);
-                });
+            // Add aggregated settlements to activities
+            Object.values(settlementAggregator).forEach(aggS => {
+                transformedActivities.push(aggS);
+            });
 
-                // Sort by date descending
-                transformedActivities.sort((a, b) => new Date(b.date) - new Date(a.date));
+            // Sort by date descending
+            transformedActivities.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-                setActivities(transformedActivities);
-                setGroupData(groupRes.data);
-            } catch (error) {
-                toast.error("Failed to load activities");
-            } finally {
-                setLoading(false);
-            }
-        };
+            setActivities(transformedActivities);
+            setGroupData(groupRes.data);
+        } catch (error) {
+            toast.error("Failed to load activities");
+        } finally {
+            setLoading(false);
+        }
+    };
 
+    useEffect(() => {
+        if (!selectedGroupId) return;
         fetchData();
     }, [selectedGroupId]);
+
+    const handleDeleteExpense = async (expenseId) => {
+        if (!window.confirm("Are you sure you want to delete this expense? This will completely remove it and its associated settlements.")) {
+            return;
+        }
+        try {
+            await api.delete(`/group-expenses/${selectedGroupId}/${expenseId}`);
+            toast.success("Expense deleted successfully");
+            fetchData(); // Refresh list
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to delete expense");
+        }
+    };
 
     if (!selectedGroupId) {
         return <div className="p-8 text-center bg-white rounded-xl shadow mt-8">Please select a group first.</div>;
@@ -154,6 +166,22 @@ const GroupExpenses = () => {
 
                                 {isExpanded && (
                                     <div className="px-5 pb-5 border-t border-gray-50 pt-5 space-y-6 animate-fadeIn">
+                                        {/* Edit/Delete Actions */}
+                                        <div className="flex justify-end space-x-3 mb-2">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); navigate(`/groups/expenses/edit/${act._id}`); }}
+                                                className="flex items-center px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-bold hover:bg-blue-100 transition"
+                                            >
+                                                <MdEdit className="mr-1" /> Edit
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDeleteExpense(act._id); }}
+                                                className="flex items-center px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-sm font-bold hover:bg-red-100 transition"
+                                            >
+                                                <MdDelete className="mr-1" /> Delete
+                                            </button>
+                                        </div>
+
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             {/* Payments Info */}
                                             <div className="space-y-3">

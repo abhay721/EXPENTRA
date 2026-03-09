@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
-import { MdArrowBack, MdCalculate, MdCheckCircle, MdInfoOutline, MdReceipt, MdCategory } from 'react-icons/md';
+import { MdArrowBack, MdCalculate, MdCheckCircle, MdInfoOutline, MdReceipt, MdCategory, MdEdit } from 'react-icons/md';
 
 const AddGroupExpense = () => {
     const navigate = useNavigate();
+    const { expenseId } = useParams();
+    const isEditMode = !!expenseId;
     const { selectedGroupId } = useContext(AuthContext);
     const [groupData, setGroupData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -29,32 +31,82 @@ const AddGroupExpense = () => {
             navigate('/groups');
             return;
         }
-        const fetchGroup = async () => {
+        const fetchData = async () => {
             try {
-                const res = await api.get(`/groups/${selectedGroupId}`);
-                setGroupData(res.data);
+                // Fetch group members first
+                const groupRes = await api.get(`/groups/${selectedGroupId}`);
+                const group = groupRes.data;
+                setGroupData(group);
 
-                // Initialize splitDetails with all members involved by default
-                const initialSplit = res.data.members.map(m => ({
-                    mid: m._id, // Internal member ID
-                    user: m.user,
-                    name: m.name,
-                    share: 0,
-                    involved: true
-                }));
+                let initialSplit = [];
+                let initialPaidBy = [];
+
+                if (isEditMode) {
+                    // Fetch existing expense details
+                    // We need to fetch all expenses and find the specific one since there isn't a single expense endpoint
+                    const expensesRes = await api.get(`/group-expenses/${selectedGroupId}`);
+                    const expense = expensesRes.data.find(e => e._id === expenseId);
+
+                    if (!expense) {
+                        toast.error("Expense not found");
+                        navigate('/groups/expenses');
+                        return;
+                    }
+
+                    setTitle(expense.title);
+                    setAmount(expense.amount);
+                    setCategory(expense.category || 'General');
+                    setNote(expense.note || '');
+                    setDate(format(new Date(expense.date), 'yyyy-MM-dd'));
+                    setSplitType(expense.splitType || 'equal');
+
+                    // Map saved paidBy logic matching member IDs
+                    initialPaidBy = expense.paidBy.map(p => {
+                        const member = group.members.find(m => (m.user && p.user && m.user.toString() === p.user.toString()) || m.name === p.name);
+                        return {
+                            mid: member ? member._id : null,
+                            user: p.user,
+                            name: p.name,
+                            amount: p.amount
+                        };
+                    });
+
+                    // Map saved splitDetails
+                    initialSplit = group.members.map(m => {
+                        const savedSplit = expense.splitDetails.find(s => (s.user && m.user && s.user.toString() === m.user.toString()) || s.name === m.name);
+                        return {
+                            mid: m._id,
+                            user: m.user,
+                            name: m.name,
+                            share: savedSplit ? savedSplit.share : 0,
+                            involved: !!savedSplit
+                        };
+                    });
+
+                } else {
+                    // Default initialization for new expense
+                    initialSplit = group.members.map(m => ({
+                        mid: m._id,
+                        user: m.user,
+                        name: m.name,
+                        share: 0,
+                        involved: true
+                    }));
+                }
+
                 setSplitDetails(initialSplit);
-
-                setPaidBy([]);
+                setPaidBy(initialPaidBy);
                 setLoading(false);
             } catch (error) {
-                toast.error("Failed to load group data");
+                toast.error("Failed to load data");
                 setLoading(false);
             }
         };
-        fetchGroup();
-    }, [selectedGroupId, navigate]);
+        fetchData();
+    }, [selectedGroupId, navigate, expenseId, isEditMode]);
 
     const handleInvolvementToggle = (mId) => {
+
         setSplitDetails(splitDetails.map(item =>
             item.mid === mId ? { ...item, involved: !item.involved } : item
         ));
@@ -135,7 +187,7 @@ const AddGroupExpense = () => {
                 amount: p.amount
             }));
 
-            await api.post('/group-expenses', {
+            const payload = {
                 groupId: selectedGroupId,
                 title,
                 amount: Number(amount),
@@ -145,14 +197,22 @@ const AddGroupExpense = () => {
                 category,
                 note,
                 date: new Date(date)
-            });
+            };
 
-            toast.success("Expense added successfully");
+            if (isEditMode) {
+                await api.put(`/group-expenses/${selectedGroupId}/${expenseId}`, payload);
+                toast.success("Expense updated successfully");
+            } else {
+                await api.post('/group-expenses', payload);
+                toast.success("Expense added successfully");
+            }
+
             navigate('/groups/expenses');
         } catch (error) {
-            toast.error(error.response?.data?.message || "Failed to add expense");
+            toast.error(error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'add'} expense`);
         }
     };
+
 
     if (loading) return <div className="p-8">Loading...</div>;
 
@@ -164,10 +224,11 @@ const AddGroupExpense = () => {
                 <button onClick={() => navigate('/groups/expenses')} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition">
                     <MdArrowBack className="w-6 h-6 text-gray-700" />
                 </button>
-                <h1 className="text-3xl font-bold text-gray-900">Add Group Expense</h1>
+                <h1 className="text-3xl font-bold text-gray-900">{isEditMode ? 'Edit Group Expense' : 'Add Group Expense'}</h1>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
                 {/* Left Column: Basic Info & Paid By */}
                 <div className="lg:col-span-2 space-y-6">
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
@@ -312,7 +373,8 @@ const AddGroupExpense = () => {
                             onClick={handleSubmit}
                             className="w-full mt-8 py-4 bg-white text-indigo-600 rounded-xl font-bold text-lg hover:bg-indigo-50 transition shadow-lg active:scale-95 flex items-center justify-center"
                         >
-                            <MdCheckCircle className="mr-2 text-xl" /> Save Expense
+                            {isEditMode ? <MdEdit className="mr-2 text-xl" /> : <MdCheckCircle className="mr-2 text-xl" />}
+                            {isEditMode ? 'Update Expense' : 'Save Expense'}
                         </button>
                     </div>
 
