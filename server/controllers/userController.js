@@ -142,4 +142,22 @@ const updateUserProfile = async (req, res, next) => {
     }
 };
 
-export { registerUser, authUser, getUserProfile, updateUserProfile };
+const saveFCMToken = async (req, res, next) => {
+    try {
+        const { fcmToken } = req.body;
+        if (!fcmToken) {
+            res.status(400);
+            throw new Error("FCM token is required");
+        }
+
+        await User.findByIdAndUpdate(req.user._id, {
+            $addToSet: { fcmTokens: fcmToken },
+        });
+
+        res.json({ success: true, message: "FCM token saved" });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export { registerUser, authUser, getUserProfile, updateUserProfile, saveFCMToken };

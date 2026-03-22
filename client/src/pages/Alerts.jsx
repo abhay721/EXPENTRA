@@ -24,14 +24,22 @@ const Alerts = () => {
     const getAlertStyle = (type) => {
         switch (type) {
             case 'BUDGET_EXCEEDED':
-                return 'bg-red-50 border-red-500 text-red-800';
+                return 'bg-rose-50 border-rose-500 text-rose-800';
+            case 'SETTLEMENT_PENDING':
+                return 'bg-amber-50 border-amber-500 text-amber-800';
+            case 'GROUP_EXPENSE':
+                return 'bg-indigo-50 border-indigo-500 text-indigo-800';
+            case 'PAYMENT_RECEIVED':
+                return 'bg-emerald-50 border-emerald-500 text-emerald-800';
             case 'BUDGET_WARNING':
             case 'OVERSPENDING_WARNING':
-                return 'bg-yellow-50 border-yellow-500 text-yellow-800';
+                return 'bg-orange-50 border-orange-500 text-orange-800';
             case 'RECURRING_SUBSCRIPTION':
                 return 'bg-blue-50 border-blue-500 text-blue-800';
+            case 'INFO':
+                return 'bg-slate-50 border-slate-300 text-slate-600';
             default:
-                return 'bg-green-50 border-green-500 text-green-800';
+                return 'bg-indigo-50 border-indigo-500 text-indigo-800';
         }
     };
 

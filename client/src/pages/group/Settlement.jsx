@@ -66,12 +66,12 @@ const Settlement = () => {
     if (loading) return <div className="p-8 text-center">Loading reimbursement data...</div>;
 
     const {
-        balances,
-        totalOwedToUser,
-        totalUserOwes,
-        pendingReimbursements,
-        overdueReimbursements
-    } = data || { balances: [], totalOwedToUser: 0, totalUserOwes: 0, pendingReimbursements: [], overdueReimbursements: [] };
+        balances = [],
+        totalOwedToUser = 0,
+        totalUserOwes = 0,
+        pendingReimbursements = [],
+        overdueReimbursements = []
+    } = data || {};
 
     const SettlementCard = ({ settlement, status }) => {
         const isFromMe = settlement.from.user === (user?._id || user?.id);

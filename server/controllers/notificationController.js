@@ -1,7 +1,9 @@
 import Expense from '../models/expenseModel.js';
 import Budget from '../models/budgetModel.js';
+import GroupExpense from '../models/groupExpenseModel.js';
+import Group from '../models/groupModel.js';
 
-// @desc    Get all notifications and alerts
+// @desc    Get all notifications and alerts (dynamic)
 // @route   GET /api/notifications
 // @access  Private
 const getNotifications = async (req, res, next) => {
@@ -9,67 +11,75 @@ const getNotifications = async (req, res, next) => {
         const userId = req.user._id;
         const notifications = [];
         const today = new Date();
+        const last24h = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+        
         const currentMonth = today.getMonth() + 1;
         const currentYear = today.getFullYear();
 
-        // 1. Budget exceed alert
+        // 1. Personal Budget Context
         const budget = await Budget.findOne({ userId, month: currentMonth, year: currentYear });
         const startDate = new Date(currentYear, currentMonth - 1, 1);
         const endDate = new Date(currentYear, currentMonth, 0, 23, 59, 59, 999);
 
-        const currentMonthSpendReq = await Expense.aggregate([
+        const personalSpend = await Expense.aggregate([
             { $match: { userId, date: { $gte: startDate, $lte: endDate } } },
             { $group: { _id: null, total: { $sum: '$amount' } } },
         ]);
-
-        const currSpend = currentMonthSpendReq.length > 0 ? currentMonthSpendReq[0].total : 0;
+        const currSpend = personalSpend.length > 0 ? personalSpend[0].total : 0;
 
         if (budget && currSpend > budget.limitAmount) {
             notifications.push({
                 type: 'BUDGET_EXCEEDED',
-                message: `You have exceeded your monthly budget of ${budget.limitAmount}. Total spent: ${currSpend}`,
-            });
-        } else if (budget && currSpend > budget.limitAmount * 0.8) {
-            notifications.push({
-                type: 'BUDGET_WARNING',
-                message: `You have used ${((currSpend / budget.limitAmount) * 100).toFixed(1)}% of your monthly budget.`,
+                message: `Personal budget exceeded by ₹${(currSpend - budget.limitAmount).toFixed(0)}!`,
             });
         }
 
-        // 2. Overspending warning (Compared to average)
-        // simplistic average over last 3 months
-        const threeMonthsAgoStart = new Date(currentYear, currentMonth - 4, 1);
-        const lastMonthEnd = new Date(currentYear, currentMonth - 1, 0, 23, 59, 59, 999);
+        // 2. Group Context: Recent Expenses
+        const userGroups = await Group.find({ 'members.user': userId });
+        const groupIds = userGroups.map(g => g._id);
 
-        const threeMonthsData = await Expense.aggregate([
-            { $match: { userId, date: { $gte: threeMonthsAgoStart, $lte: lastMonthEnd } } },
-            { $group: { _id: null, total: { $sum: '$amount' } } },
-        ]);
+        if (groupIds.length > 0) {
+            // New expenses in last 24h
+            const recentGroupExpenses = await GroupExpense.find({
+                groupId: { $in: groupIds },
+                createdAt: { $gte: last24h },
+                'paidBy.user': { $ne: userId } // Not created by you
+            }).populate('groupId', 'name');
 
-        const historicalSpend = threeMonthsData.length > 0 ? (threeMonthsData[0].total / 3) : 0;
+            recentGroupExpenses.forEach(exp => {
+                notifications.push({
+                    type: 'GROUP_EXPENSE',
+                    message: `New: ₹${exp.amount} for "${exp.title}" added in ${exp.groupId.name}`,
+                    details: { groupId: exp.groupId._id, expenseId: exp._id }
+                });
+            });
 
-        if (historicalSpend > 0 && currSpend > historicalSpend * 1.5) {
-            notifications.push({
-                type: 'OVERSPENDING_WARNING',
-                message: `Your current spending is significantly higher than your recent average of ${historicalSpend.toFixed(2)}.`,
+            // 3. Settlements: Pendings & Recent Payments
+            const allGroupExpenses = await GroupExpense.find({ groupId: { $in: groupIds } });
+            
+            allGroupExpenses.forEach(exp => {
+                exp.settlements.forEach(s => {
+                    // You owe someone
+                    if (s.from.user?.toString() === userId.toString() && s.reimbursementStatus === 'pending') {
+                        notifications.push({
+                            type: 'SETTLEMENT_PENDING',
+                            message: `Reminder: You owe ₹${s.amount} to ${s.to.name}`,
+                            details: { expenseId: exp._id }
+                        });
+                    }
+                    // You got paid recently (Confirmed in last 24h)
+                    if (s.to.user?.toString() === userId.toString() && s.reimbursementStatus === 'paid' && s.paymentDate >= last24h) {
+                        notifications.push({
+                            type: 'PAYMENT_RECEIVED',
+                            message: `Payment Received: ₹${s.amount} from ${s.from.name}`,
+                            details: { expenseId: exp._id }
+                        });
+                    }
+                });
             });
         }
 
-        // 3. Recurring subscription detection
-        const recentExpenses = await Expense.aggregate([
-            { $match: { userId } },
-            { $group: { _id: { amount: '$amount', category: '$category' }, count: { $sum: 1 }, latestDate: { $max: '$date' } } },
-            { $match: { count: { $gte: 2 } } },
-        ]);
-
-        if (recentExpenses.length > 0) {
-            notifications.push({
-                type: 'RECURRING_SUBSCRIPTION',
-                message: `Detected ${recentExpenses.length} potential recurring subscriptions based on duplicate amounts in the same category.`,
-                details: recentExpenses,
-            });
-        }
-
+        // 4. Default info if nothing else
         if (notifications.length === 0) {
             notifications.push({
                 type: 'INFO',
@@ -77,6 +87,7 @@ const getNotifications = async (req, res, next) => {
             });
         }
 
+        // Sort: Group alerts first, then Budget
         res.json(notifications);
     } catch (error) {
         next(error);

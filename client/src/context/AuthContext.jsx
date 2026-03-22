@@ -1,6 +1,8 @@
 import React, { createContext, useState, useEffect } from 'react';
 import api from '../services/api';
 import { toast } from 'react-toastify';
+import { getFCMToken } from '../utils/getFCMToken';
+import { messaging, onMessage } from '../firebase';
 
 export const AuthContext = createContext();
 
@@ -12,6 +14,16 @@ export const AuthProvider = ({ children }) => {
     const [appMode, setAppModeState] = useState(localStorage.getItem('appMode') || 'personal'); // 'personal' | 'group'
     const [selectedGroupId, setSelectedGroupIdState] = useState(localStorage.getItem('selectedGroupId') || null);
     const [activeGroup, setActiveGroup] = useState(null);
+    const [notifications, setNotifications] = useState([]);
+
+    const fetchNotifications = async () => {
+        try {
+            const res = await api.get('/notifications');
+            if (res.data) setNotifications(res.data);
+        } catch (error) {
+            console.error('Failed to load notifications', error);
+        }
+    };
 
     const setAppMode = (mode) => {
         setAppModeState(mode);
@@ -69,7 +81,39 @@ export const AuthProvider = ({ children }) => {
         };
 
         checkLoggedIn();
-    }, []);
+        if (user) fetchNotifications();
+    }, [user]);
+
+    const notificationSetupDone = React.useRef(null);
+
+    useEffect(() => {
+        if (user && !loading && notificationSetupDone.current !== user._id) {
+            const setupNotifications = async () => {
+                try {
+                    const fcmToken = await getFCMToken();
+                    if (fcmToken) {
+                        console.log('Current FCM Token:', fcmToken);
+                        await api.post('/auth/fcm-token', { fcmToken });
+                        notificationSetupDone.current = user._id; // Mark as done for this user
+                    }
+
+                    // Foreground messages listener
+                    const unsubscribe = onMessage(messaging, (payload) => {
+                        toast.info(`${payload.notification.title}: ${payload.notification.body}`, {
+                            position: "top-right",
+                            autoClose: 5000,
+                        });
+                        fetchNotifications();
+                    });
+
+                    return unsubscribe;
+                } catch (error) {
+                    console.error("FCM setup failed:", error);
+                }
+            };
+            setupNotifications();
+        }
+    }, [user, loading]);
 
     const login = async (email, password) => {
         try {
@@ -111,7 +155,8 @@ export const AuthProvider = ({ children }) => {
     return (
         <AuthContext.Provider value={{
             user, setUser, login, register, logout, loading,
-            appMode, setAppMode, selectedGroupId, setSelectedGroupId, activeGroup
+            appMode, setAppMode, selectedGroupId, setSelectedGroupId, activeGroup,
+            notifications, fetchNotifications
         }}>
             {!loading && children}
         </AuthContext.Provider>

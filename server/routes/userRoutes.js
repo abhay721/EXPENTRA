@@ -4,6 +4,7 @@ import {
     authUser,
     getUserProfile,
     updateUserProfile,
+    saveFCMToken,
 } from '../controllers/userController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -13,5 +14,6 @@ router.post('/register', registerUser);
 router.post('/login', authUser);
 router.get('/profile', protect, getUserProfile);
 router.put('/profile', protect, updateUserProfile);
+router.post('/fcm-token', protect, saveFCMToken);
 
 export default router;

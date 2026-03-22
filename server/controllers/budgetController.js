@@ -102,5 +102,36 @@ const getBudgetStatus = async (req, res, next) => {
     }
 };
 
+import { sendPushNotification } from '../utils/notificationHelper.js';
+
+// Internal helper for overflow check (can be called after any expense action)
+export const checkAndNotifyBudgetOverflow = async (userId, month, year) => {
+    try {
+        const budget = await Budget.findOne({ userId, month, year });
+        if (!budget) return;
+
+        const startDate = new Date(year, month - 1, 1);
+        const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+
+        const expenses = await Expense.aggregate([
+            { $match: { userId, date: { $gte: startDate, $lte: endDate } } },
+            { $group: { _id: null, totalSpent: { $sum: '$amount' } } }
+        ]);
+
+        const totalSpent = expenses.length > 0 ? expenses[0].totalSpent : 0;
+
+        if (totalSpent > budget.limitAmount) {
+            const extra = totalSpent - budget.limitAmount;
+            await sendPushNotification([userId], {
+                title: "Budget Exceeded 🚨",
+                body: `You have exceeded your monthly budget by ₹${extra.toFixed(0)}!`,
+                data: { url: "/budget" }
+            });
+        }
+    } catch (error) {
+        console.error("Budget overflow check failed:", error);
+    }
+};
+
 export { setBudget, getBudgetStatus };
 

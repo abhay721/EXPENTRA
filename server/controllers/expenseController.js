@@ -1,4 +1,5 @@
 import Expense from '../models/expenseModel.js';
+import { checkAndNotifyBudgetOverflow } from '../controllers/budgetController.js';
 
 // @desc    Create new expense
 // @route   POST /api/expenses
@@ -33,6 +34,11 @@ const createExpense = async (req, res, next) => {
         });
 
         const createdExpense = await expense.save();
+
+        // Check for budget overflow (non-blocking)
+        const budgetDate = new Date(createdExpense.date);
+        checkAndNotifyBudgetOverflow(req.user._id, budgetDate.getMonth() + 1, budgetDate.getFullYear());
+
         res.status(201).json(createdExpense);
     } catch (error) {
         next(error);
@@ -90,6 +96,11 @@ const updateExpense = async (req, res, next) => {
             if (req.body.recurring !== undefined) expense.recurring = req.body.recurring === true || req.body.recurring === 'true';
 
             const updatedExpense = await expense.save();
+
+            // Check for budget overflow (non-blocking)
+            const budgetDate = new Date(updatedExpense.date);
+            checkAndNotifyBudgetOverflow(req.user._id, budgetDate.getMonth() + 1, budgetDate.getFullYear());
+
             res.json(updatedExpense);
         } else {
             res.status(404);
@@ -113,7 +124,12 @@ const deleteExpense = async (req, res, next) => {
                 throw new Error('Not authorized to delete this expense');
             }
 
+            const budgetDate = new Date(expense.date);
             await Expense.deleteOne({ _id: req.params.id });
+
+            // Check for budget overflow (non-blocking) - though deletion might bring it back under limit
+            checkAndNotifyBudgetOverflow(req.user._id, budgetDate.getMonth() + 1, budgetDate.getFullYear());
+
             res.json({ message: 'Expense removed' });
         } else {
             res.status(404);
