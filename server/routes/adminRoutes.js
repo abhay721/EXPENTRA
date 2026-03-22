@@ -11,11 +11,9 @@ import {
     createCategory,
     updateCategory,
     deleteCategory,
-    getReports
-} from '../controllers/adminController.js';
-import {
+    getReports,
     getAdminAnalytics
-} from '../controllers/adminAnalyticController.js';
+} from '../controllers/adminController.js';
 
 const router = express.Router();
 
@@ -26,17 +24,17 @@ router.use(protect, admin);
 router.get('/dashboard', getAdminDashboardStats);
 
 // Users
-router.get('/users',getUsers);
+router.get('/users', getUsers);
 router.put('/users/:id', updateUser);
 router.put('/users/:id', deleteUser);
-router.get('/users/:id/expenses' ,getUserExpenses);
-router.delete('/users/:userId/expenses/:expenseId',deleteUserExpense);
+router.get('/users/:id/expenses', getUserExpenses);
+router.delete('/users/:userId/expenses/:expenseId', deleteUserExpense);
 
 // Categories
 router.get('/categories', getCategories);
 router.post('/categories', createCategory);
-router.put('/categories/:id',updateCategory);
-router.delete('/categories/:id',deleteCategory);
+router.put('/categories/:id', updateCategory);
+router.delete('/categories/:id', deleteCategory);
 
 // Reports
 router.get('/reports', getReports);

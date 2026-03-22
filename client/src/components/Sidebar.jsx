@@ -9,8 +9,6 @@ import {
     MdNotificationsActive,
     MdAnalytics,
     MdAdminPanelSettings,
-    MdSecurity,
-    MdSettings,
     MdHome,
     MdCallSplit,
     MdHandshake,
@@ -34,8 +32,6 @@ const Sidebar = ({ role, isOpen, setIsOpen }) => {
                 { name: 'Manage Users', path: '/admin/users', icon: <MdGroup className="w-6 h-6" /> },
                 { name: 'Categories', path: '/admin/categories', icon: <MdPieChart className="w-6 h-6" /> },
                 { name: 'System Reports', path: '/admin/reports', icon: <MdAnalytics className="w-6 h-6" /> },
-                { name: 'Security Logs', path: '/admin/security', icon: <MdSecurity className="w-6 h-6 text-red-500" /> },
-                { name: 'Settings', path: '/admin/settings', icon: <MdSettings className="w-6 h-6 text-slate-400" /> },
                 { name: 'Admin Profile', path: '/admin/profile', icon: <MdAdminPanelSettings className="w-6 h-6" /> },
                 { name: 'Back to Personal', path: '/dashboard', icon: <MdHome className="w-6 h-6 text-indigo-400" />, action: () => setAppMode('personal') },
             ];

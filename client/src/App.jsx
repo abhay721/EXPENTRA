@@ -34,8 +34,6 @@ import AdminUsers from './pages/admin/AdminUsers';
 import AdminCategories from './pages/admin/AdminCategories';
 import AdminReports from './pages/admin/AdminReports';
 import AdminProfile from './pages/admin/AdminProfile';
-import AdminSettings from './pages/admin/AdminSettings';
-import AdminSecurityLogs from './pages/admin/AdminSecurityLogs';
 
 
 function App() {
@@ -86,8 +84,6 @@ function App() {
                 <Route path="/admin/categories" element={<AdminCategories />} />
                 <Route path="/admin/reports" element={<AdminReports />} />
                 <Route path="/admin/profile" element={<AdminProfile />} />
-                <Route path="/admin/settings" element={<AdminSettings />} />
-                <Route path="/admin/security" element={<AdminSecurityLogs />} />
               </Route>
 
             </Route>
