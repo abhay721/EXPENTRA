@@ -39,6 +39,25 @@ export const sendPushNotification = async (tokens, payload) => {
                 body: payload.body,
             },
             data: payload.data || {},
+            android: {
+                priority: "high",
+                notification: {
+                    sound: "default",
+                    clickAction: payload.data?.url || "/",
+                }
+            },
+            webpush: {
+                headers: {
+                    Urgency: "high",
+                },
+                notification: {
+                    icon: "/pwa-192x192.png",
+                    badge: "/pwa-192x192.png",
+                },
+                fcm_options: {
+                    link: payload.data?.url || "/",
+                },
+            },
             tokens: tokens,
         };
 
