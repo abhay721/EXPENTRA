@@ -9,6 +9,7 @@ import axios from 'axios';
 const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const API_URL = (Array.isArray(rawApiUrl) ? rawApiUrl[0] : rawApiUrl).toString().trim().replace(/,$/, '');
 axios.defaults.baseURL = API_URL;
+axios.defaults.withCredentials = true;
 
 // Add a request interceptor
 axios.interceptors.request.use(
