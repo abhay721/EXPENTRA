@@ -15,6 +15,10 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'autoUpdate',
         injectRegister: 'auto',
+        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+        devOptions: {
+          enabled: true
+        },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
           runtimeCaching: [
@@ -37,6 +41,8 @@ export default defineConfig(({ mode }) => {
         manifest: {
           name: 'Expense Manager',
           short_name: 'Expense',
+          id: '/',
+          start_url: '/',
           description: 'Track and manage your expenses with ease.',
           theme_color: '#000000',
           background_color: '#ffffff',
