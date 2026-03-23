@@ -12,7 +12,7 @@ const getNotifications = async (req, res, next) => {
         const notifications = [];
         const today = new Date();
         const last24h = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-        
+
         const currentMonth = today.getMonth() + 1;
         const currentYear = today.getFullYear();
 
@@ -56,7 +56,7 @@ const getNotifications = async (req, res, next) => {
 
             // 3. Settlements: Pendings & Recent Payments
             const allGroupExpenses = await GroupExpense.find({ groupId: { $in: groupIds } });
-            
+
             allGroupExpenses.forEach(exp => {
                 exp.settlements.forEach(s => {
                     // You owe someone
