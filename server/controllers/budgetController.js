@@ -102,7 +102,7 @@ const getBudgetStatus = async (req, res, next) => {
     }
 };
 
-import { sendPushNotification } from '../utils/notificationHelper.js';
+import { sendPushNotification, getTokensFromUsers } from '../utils/notificationHelper.js';
 
 // Internal helper for overflow check (can be called after any expense action)
 export const checkAndNotifyBudgetOverflow = async (userId, month, year) => {
@@ -122,11 +122,14 @@ export const checkAndNotifyBudgetOverflow = async (userId, month, year) => {
 
         if (totalSpent > budget.limitAmount) {
             const extra = totalSpent - budget.limitAmount;
-            await sendPushNotification([userId], {
-                title: "Budget Exceeded 🚨",
-                body: `You have exceeded your monthly budget by ₹${extra.toFixed(0)}!`,
-                data: { url: "/budget" }
-            });
+            const tokens = await getTokensFromUsers([userId]);
+            if (tokens.length > 0) {
+                await sendPushNotification(tokens, {
+                    title: "Budget Exceeded 🚨",
+                    body: `You have exceeded your monthly budget by ₹${extra.toFixed(0)}!`,
+                    data: { url: "/budget" }
+                });
+            }
         }
     } catch (error) {
         console.error("Budget overflow check failed:", error);
