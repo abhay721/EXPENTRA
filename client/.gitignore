@@ -26,3 +26,5 @@ dist-ssr
 # Environment and Secrets
 .env
 .env.local
+
+.vercel

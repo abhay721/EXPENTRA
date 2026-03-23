@@ -8,6 +8,7 @@ import axios from 'axios';
 // Configure Axios globally
 const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const API_URL = (Array.isArray(rawApiUrl) ? rawApiUrl[0] : rawApiUrl).toString().trim().replace(/,$/, '');
+console.log("Current API URL:", API_URL);
 axios.defaults.baseURL = API_URL;
 axios.defaults.withCredentials = true;
 
