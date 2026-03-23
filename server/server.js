@@ -22,8 +22,9 @@ const app = express();
 
 const allowedOrigins = [
     'http://localhost:5173',
-    FRONTEND_URL
-];
+    'https://expentra-ten.vercel.app',
+    process.env.FRONTEND_URL
+].filter(Boolean);
 
 app.use(cors({
     origin: function (origin, callback) {
