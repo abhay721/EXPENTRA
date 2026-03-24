@@ -15,7 +15,7 @@ export const createGroup = async (req, res, next) => {
 
         // Generate Invite Code (6 chars alphanumeric)
         const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-        const inviteLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/join-group/${inviteCode}`;
+        const inviteLink = `${process.env.FRONTEND_URL}/join-group/${inviteCode}`;
 
         // Include the creator in the members list by default
         const initialMembers = [
